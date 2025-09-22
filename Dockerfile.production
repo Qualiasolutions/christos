@@ -1,0 +1,96 @@
+# Multi-stage production Dockerfile for Postiz
+FROM node:20.17.0-alpine AS base
+
+# Install pnpm and system dependencies
+RUN corepack enable && corepack prepare pnpm@10.6.1 --activate
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    pkgconfig \
+    vips-dev \
+    dumb-init
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/*/package.json ./apps/*/
+COPY libraries/*/package.json ./libraries/*/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile --prod=false
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN pnpm run prisma-generate
+
+# Build stage
+FROM base AS builder
+RUN pnpm run build
+
+# Backend service
+FROM base AS backend
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+COPY --from=builder /app/libraries ./libraries
+COPY --from=builder /app/node_modules ./node_modules
+
+EXPOSE 3000
+USER node
+CMD ["dumb-init", "pnpm", "run", "start:prod:backend"]
+
+# Frontend service
+FROM base AS frontend
+COPY --from=builder /app/apps/frontend/.next ./apps/frontend/.next
+COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
+COPY --from=builder /app/apps/frontend/package.json ./apps/frontend/
+COPY --from=builder /app/node_modules ./node_modules
+
+EXPOSE 3000
+USER node
+CMD ["dumb-init", "pnpm", "run", "start:prod:frontend"]
+
+# Workers service
+FROM base AS workers
+COPY --from=builder /app/apps/workers/dist ./apps/workers/dist
+COPY --from=builder /app/libraries ./libraries
+COPY --from=builder /app/node_modules ./node_modules
+
+USER node
+CMD ["dumb-init", "pnpm", "run", "start:prod:workers"]
+
+# Cron service
+FROM base AS cron
+COPY --from=builder /app/apps/cron/dist ./apps/cron/dist
+COPY --from=builder /app/libraries ./libraries
+COPY --from=builder /app/node_modules ./node_modules
+
+USER node
+CMD ["dumb-init", "pnpm", "run", "start:prod:cron"]
+
+# All-in-one production image (for single container deployments)
+FROM base AS production
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+COPY --from=builder /app/apps/frontend/.next ./apps/frontend/.next
+COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
+COPY --from=builder /app/apps/workers/dist ./apps/workers/dist
+COPY --from=builder /app/apps/cron/dist ./apps/cron/dist
+COPY --from=builder /app/libraries ./libraries
+COPY --from=builder /app/node_modules ./node_modules
+
+# Install PM2 for process management
+RUN pnpm add -g pm2
+
+# Create uploads directory
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
+
+EXPOSE 3000 4200
+USER node
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
+
+CMD ["dumb-init", "pnpm", "run", "pm2"]

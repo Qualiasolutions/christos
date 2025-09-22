@@ -1,3 +1,52 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install && pnpm run build"
+
+[deploy]
+startCommand = "pnpm run pm2"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
 [phases.setup]
-    nixPkgs = ['nodejs', 'python3']
-    aptPkgs = ['build-essential', 'libudev-dev']
+nixPkgs = ['nodejs_20', 'python3', 'pkg-config']
+aptPkgs = ['build-essential', 'libudev-dev', 'libvips-dev']
+
+[phases.build]
+cmds = [
+  "corepack enable",
+  "corepack prepare pnpm@10.6.1 --activate",
+  "pnpm install --frozen-lockfile",
+  "pnpm run prisma-generate",
+  "pnpm run build"
+]
+
+[phases.start]
+cmd = "pnpm run pm2"
+
+# Environment variables that Railway should set
+[env]
+NODE_ENV = "production"
+NODE_OPTIONS = "--max-old-space-size=2048"
+PNPM_HOME = "/root/.local/share/pnpm"
+PATH = "$PNPM_HOME:$PATH"
+
+# Railway services configuration
+[services]
+
+[services.backend]
+build.buildCommand = "pnpm run build:backend"
+deploy.startCommand = "pnpm run start:prod:backend"
+
+[services.frontend]
+build.buildCommand = "pnpm run build:frontend"
+deploy.startCommand = "pnpm run start:prod:frontend"
+
+[services.workers]
+build.buildCommand = "pnpm run build:workers"
+deploy.startCommand = "pnpm run start:prod:workers"
+
+[services.cron]
+build.buildCommand = "pnpm run build:cron"
+deploy.startCommand = "pnpm run start:prod:cron"
