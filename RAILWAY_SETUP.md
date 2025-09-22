@@ -19,7 +19,7 @@ Copy these exact variables into each service:
 #### **postiz-backend** Service Variables:
 ```
 NODE_ENV=production
-NODE_OPTIONS=--max-old-space-size=2048
+NODE_OPTIONS=--max-old-space-size=4096
 JWT_SECRET=19R072bJMbmBt1M0mk20nYj2dmxawJ2kpyU5VsVOs
 FRONTEND_URL=${{RAILWAY_PUBLIC_DOMAIN}}
 NEXT_PUBLIC_BACKEND_URL=${{RAILWAY_PUBLIC_DOMAIN}}
@@ -32,7 +32,7 @@ NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY=/uploads
 #### **postiz-frontend** Service Variables:
 ```
 NODE_ENV=production
-NODE_OPTIONS=--max-old-space-size=2048
+NODE_OPTIONS=--max-old-space-size=4096
 JWT_SECRET=19R072bJMbmBt1M0mk20nYj2dmxawJ2kpyU5VsVOs
 FRONTEND_URL=${{RAILWAY_PUBLIC_DOMAIN}}
 NEXT_PUBLIC_BACKEND_URL=${{RAILWAY_PUBLIC_DOMAIN}}
@@ -41,7 +41,7 @@ NEXT_PUBLIC_BACKEND_URL=${{RAILWAY_PUBLIC_DOMAIN}}
 #### **postiz-workers** Service Variables:
 ```
 NODE_ENV=production
-NODE_OPTIONS=--max-old-space-size=2048
+NODE_OPTIONS=--max-old-space-size=4096
 JWT_SECRET=19R072bJMbmBt1M0mk20nYj2dmxawJ2kpyU5VsVOs
 STORAGE_PROVIDER=local
 UPLOAD_DIRECTORY=/app/uploads

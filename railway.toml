@@ -28,7 +28,7 @@ cmd = "pnpm run pm2"
 # Environment variables that Railway should set
 [env]
 NODE_ENV = "production"
-NODE_OPTIONS = "--max-old-space-size=2048"
+NODE_OPTIONS = "--max-old-space-size=4096"
 PNPM_HOME = "/root/.local/share/pnpm"
 PATH = "$PNPM_HOME:$PATH"
 
